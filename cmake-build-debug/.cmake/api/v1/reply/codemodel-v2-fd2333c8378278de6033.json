@@ -49,8 +49,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/media/sf_VM_EXCHANGE/system_programming/7_lab/cmake-build-debug",
-		"source" : "/media/sf_VM_EXCHANGE/system_programming/7_lab"
+		"build" : "/media/sf_VM_EXCHANGE/system_programming/8_lab/cmake-build-debug",
+		"source" : "/media/sf_VM_EXCHANGE/system_programming/8_lab"
 	},
 	"version" : 
 	{
