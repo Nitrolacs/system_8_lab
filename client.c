@@ -8,13 +8,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <security/pam_appl.h>
 
 #include "client.h"
 #include "interface.h"
 #include "signals.h"
+#include "authentication.h"
 
 #define PORT 5555
 #define MAXDATASIZE 1024
+
+#define MAX_LEN 100 // максимальная длина имени пользователя и пароля
 
 // Переменная для хранения дескриптора файла журнала
 extern FILE* logfd;
@@ -76,29 +80,59 @@ int main(int argc, char *argv[])
         sprintf(buffer, "%lf %lf %lf %lf", a, b, c, d);
     }
 
-    // Отправляем данные серверу с помощью функции sendto
-    if (sendto(sockfd, buffer, strlen(buffer), 0,
-               (struct sockaddr *) &servAddr, sizeof(servAddr)) == -1) {
-        perror("sendto");
-        exit(1);
+    // Объявляем указатели на char для хранения имени пользователя и пароля
+    char* username = NULL;
+    char* password = NULL;
+
+    // Выделяем память для имени пользователя и пароля
+    username = (char*)malloc(MAX_LEN* sizeof(char));
+    password = (char*)malloc(MAX_LEN* sizeof(char));
+
+    // проверяем, что память выделена успешно
+    if (username == NULL || password == NULL)
+    {
+        printf("Ошибка при выделении памяти.\n");
+        return -1;
     }
 
-    // Выводим информацию об отправленном запросе на экран и в файл журнала
-    printf("Отправлен запрос: %s\n", buffer);
-    writeLog("Отправлен запрос: %s\n", buffer);
+    // запрашиваем у пользователя имя пользователя и пароль
+    printf("Введите имя пользователя: ");
+    scanf("%s", username);
 
-    // Устанавливаем таймер неактивности пользователя
-    setTimer(timeout);
+    printf("Введите пароль: ");
+    scanf("%s", password);
 
-    // Принимаем данные от сервера с помощью функции recvfrom
-    int numbytes = recvfrom(sockfd, buffer, MAXDATASIZE - 1, 0,
-                            NULL, NULL);
-    // Проверяем на ошибки
-    if (numbytes == -1) {
-        perror("recvfrom");
-        exit(1);
+    // Вызываем функцию аутентификации с PAM
+    int pamRet = authenticate(username, password);
+
+    if (pamRet == PAM_SUCCESS) // Если аутентификация успешна
+    {
+        // Отправляем данные серверу с помощью функции sendto
+        if (sendto(sockfd, buffer, strlen(buffer), 0,
+                   (struct sockaddr*) &servAddr,
+                           sizeof(servAddr)) == -1)
+        {
+            perror("sendto");
+            exit(1);
+        }
+
+        // Выводим информацию об отправленном запросе на экран и в файл журнала
+        printf("Отправлен запрос: %s\n", buffer);
+        writeLog("Отправлен запрос: %s\n", buffer);
+
+        // Устанавливаем таймер неактивности пользователя
+        setTimer(timeout);
+
+        // Принимаем данные от сервера с помощью функции recvfrom
+        int numbytes = recvfrom(sockfd, buffer, MAXDATASIZE - 1, 0,
+                                NULL, NULL);
+        // Проверяем на ошибки
+        if (numbytes == -1) {
+            perror("recvfrom");
+            exit(1);
+        }
+        buffer[numbytes] = '\0'; // добавляем нулевой символ в конец сообщения
     }
-    buffer[numbytes] = '\0'; // добавляем нулевой символ в конец сообщения
 
     // Закрываем сокет и файл журнала
     close(sockfd);
