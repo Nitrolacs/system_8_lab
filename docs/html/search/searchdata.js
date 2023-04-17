@@ -1,8 +1,8 @@
 var indexSectionsWithContent =
 {
   0: "acfilmopstwип",
-  1: "cfils",
-  2: "cmopstw",
+  1: "acfils",
+  2: "acmopstw",
   3: "aип"
 };
 
